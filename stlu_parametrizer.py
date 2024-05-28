@@ -79,7 +79,7 @@ def setParams(stl,valuemap):
     if isinstance(stl, Until):
         return eval(type(stl).__name__)(setParams(stl.interval, valuemap),setParams(stl.left, valuemap),setParams(stl.right, valuemap) )
     elif isinstance(stl, Mu):
-        return eval((type(stl).__name__)(setParams(stl.th, valuemap),setParams(stl.cl, valuemap),setParams(stl.t, valuemap) )
+        return eval((type(stl).__name__)(setParams(stl.th, valuemap),setParams(stl.cl, valuemap),setParams(stl.t, valuemap) ))
     elif isinstance(stl, (Interval, Or, And, Implies)):
         return eval(type(stl).__name__)(setParams(stl.left,valuemap),setParams(stl.right, valuemap))
     elif isinstance(stl, Expr):

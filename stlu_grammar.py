@@ -1,26 +1,27 @@
 from parsimonious import Grammar, NodeVisitor
 from collections.abc import Mapping
 from collections import namedtuple
-
-"""File summary
-
-  In this file, we will define the grammar of STLU inputs regardless of the strong or weak.
+import random
+import math
+"""
+File summary
+In this file, we will define the grammar of STLU inputs regardless of the strong or weak.
 """
 grammar_text = (r''' 
-formula = ( _ globally _ ) / ( _ future _ ) / ( _ until _ ) / ( _ expr _ ) / ( _ paren_formula _ ) / ( _ mu _ )
+formula = ( _ globally _ ) / ( _ eventually _ ) / ( _ until _ ) / ( _ expr _ ) / ( _ paren_formula _ ) / ( _ mu _ )
 paren_formula = "(" _ formula _ ")"
 globally = "G" interval formula flag
-Eventually = "E" interval formula flag
+eventually = "E" interval formula flag
 until = "U" interval "(" formula "," formula ")" flag
-mu = "µ" _ num _ num _ num _ flag
+mu = "µ" "(" num _ num _ num ")" flag
 interval = _ "[" _ bound  _ "," _ bound _ "]" _
 expr = or / and / implies / npred / pred 
-or = "(" _ formula _ "|" _ formula _ ")"
+or = "(" _ formula _ "|" _ formula _ ")" flag
 and = "(" _ formula _ "&" _ formula _ ")" flag
 implies = "(" _ formula _ "->" _ formula _ ")"
 npred = "!" _ formula flag
 pred = constraint / atom 
-constraint =  term _ relop _ term _
+constraint =  term _ relop _ term
 term = infix / var
 infix = "{" _ term _ arithop _ term _ "}"
 var = _ id _
@@ -55,7 +56,7 @@ class TLVisitor(NodeVisitor):
         return Eventually(interval, formula, flag)
     
     def visit_mu(self, node, children):
-        _,_, th, _, cl, _, t, flag = children
+        _,_, th, _, cl, _, t, _, flag = children
         return Mu(th,cl,t, flag)
         
     def visit_until(self, node, children):
@@ -70,16 +71,16 @@ class TLVisitor(NodeVisitor):
         return children[0]
 
     def visit_or(self, node, children):
-        _, _, left, _, _, _, right, _, _ = children
-        return Or(left, right)
+        _, _, left, _, _, _, right, _, _, flag = children
+        return Or(left, right, flag)
 
     def visit_and(self, node, children):
         _, _, left, _, _, _, right, _, _, flag = children
         return And(left, right, flag)
     #implies = "(" _ formula _ "->" _ formula _ ")"
     def visit_implies(self, node, children):
-        _, _, left, _, _, _, right, _, _ = children
-        return Implies(left, right)
+        _, _, left, _, _, _, right, _, _, flag = children
+        return Implies(left, right, flag)
 
     def visit_npred(self, node, children):
         _, _, right, flag = children
@@ -89,7 +90,7 @@ class TLVisitor(NodeVisitor):
         return children[0]
 
     def visit_constraint(self, node, children):
-        left, _, relop, _, right, _ = children
+        left, _, relop, _, right = children
         return Constraint(relop, left, right)
     
     def visit_term(self, node, children):
@@ -135,13 +136,13 @@ class Globally(namedtuple('G',['interval','subformula', 'flag'])):
     def children(self):
         return [self.subformula]
     def __repr__(self):
-        return "G{}{}flag: {}".format(self.interval, self.subformula, self.flag)
+        return "G{}({})flag: {}".format(self.interval, self.subformula, self.flag)
 
 class Eventually(namedtuple("E", ['interval','subformula', 'flag'])):
     def children(self):
         return [self.subformula]
     def __repr__(self):
-        return "E{}{}flag: {}".format(self.interval, self.subformula, self.flag)
+        return "E{}({})flag: {}".format(self.interval, self.subformula, self.flag)
 class Until(namedtuple('U',['interval','left', 'right' , 'flag'])):
     def children(self):
         return [self.left, self.right]
@@ -154,9 +155,9 @@ class Interval(namedtuple("Interval", ['left','right'])):
     def children(self):
         return [self.left, self.right]
 
-class Or(namedtuple("Or",["left", "right"])):
+class Or(namedtuple("Or",["left", "right", "flag"])):
     def __repr__(self):
-        return "({} | {})".format(self.left, self.right)
+        return "({} | {}, flag:{})".format(self.left, self.right, self.flag)
     def children(self):
         return [self.left,self.right]
 
@@ -168,13 +169,13 @@ class And(namedtuple("And",["left", "right", 'flag'])):
 
 class Implies(namedtuple("Implies",["left", "right"])):
     def __repr__(self):
-        return "({} => {})".format(self.left, self.right)
+        return "({} => {}), flag:{}".format(self.left, self.right, self.flag)
     def children(self):
-        return [self.left,self.right]
+        return [self.left,self.right, self.flag]
       
 class Mu(namedtuple('µ', ['th', 'cl', 't', "flag"])):
     def __repr__(self):
-        return "(μ{}[+-{}]{}, flag: {})".format(self.t, self.cl, self.th, self.flag)
+        return "(μ conf:{} sigma:[+-{}] mean:{}, flag: {})".format(self.t, self.cl, self.th, self.flag)
     def children(self):
         return[self.th, self.cl, self.t, self.flag]
       
@@ -213,9 +214,54 @@ def parse(tlStr):
     return TLVisitor().visit(_grammar["formula"].parse(tlStr))
     #return _grammar["formula"].parse(tlStr)
     
+    
+def interval_generator():
+    interval_num1 = random.randint(0,20)
+    interval_num2 = random.randint(interval_num1 + 1, interval_num1 + 50)
+    interval = " [ " + str(interval_num1) + " , " + str(interval_num2)+ " ] "
+    return interval
+  
+
+def stl_generator1(flag_num):
+    if flag_num not in [0,1]:
+        print("flag need to chosen from 0 and 1 where 0 is strong and 1 is weak")
+    rule1_lst = ["E", "G", "U", "µ"]
+    rule2_lst = ["&", "|"]
+    relop_lst = [">=" , "<=" , "<" , ">" , "=="]
+    flag_lst = ["s", "w"]
+    flag = flag_lst[flag_num]
+    negate_lst = ["", "! "]
+    rand_rule1 = random.randint(0,3)
+    rand_rule2 = random.randint(0,1)
+    rand_relop = random.randint(0,4)
+    rule1 = rule1_lst[rand_rule1]
+    rule2 = rule2_lst[rand_rule2]
+    relop = relop_lst[rand_relop]
+    negate = negate_lst[random.randint(0,1)]
+    interval = interval_generator()
+    if rand_rule1 == 3:
+      mean = str(random.randint(0,100))
+      sigma = str(random.randint(0,10))
+      conf = str(random.uniform(0,1))
+      output_str = rule1 + "(" + mean + " " + sigma + " " + conf + ")" + flag
+      return output_str
+
+    if rand_rule1 == 2:
+      formula1 = "( A " + rule2 +" " + negate + "c " + str(relop_lst[random.randint(0,4)]) + " "+ str(random.randint(0,1000))+ " )" + flag
+      formula2 = "b "+ relop + " " + str(random.randint(0,1000))
+      output_str = rule1 + interval + "("+ formula1 + "," + formula2 + ")" + flag
+      return output_str
+    else:
+      formula1 = "( A " + rule2 +" " + negate + "c " + str(relop_lst[random.randint(0,4)]) + " "+ str(random.randint(0,1000))+ " )" + flag
+      output_str = rule1 + interval + formula1 + flag
+      return output_str
+      
+res = stl_generator1(1)
+print(res)      
+print(parse(res))
 # Until's interval need to be configured 
-# result = parse('G [0,5] (a<5)')
+#result = parse('a<b')
 # result2 = parse("µ 0.95 1 -1 w")
-"G ( - a and b) w"
-# print(result)
+
+#print(result)
 # print(result2)

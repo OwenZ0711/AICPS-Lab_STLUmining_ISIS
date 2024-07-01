@@ -142,7 +142,8 @@ class Eventually(namedtuple("E", ['interval','subformula', 'flag'])):
     def children(self):
         return [self.subformula]
     def __repr__(self):
-        return "E{}({})flag: {}".format(self.interval, self.subformula, self.flag)
+        return "{}F{}({})".format(self.flag, self.interval, self.subformula)
+    
 class Until(namedtuple('U',['interval','left', 'right' , 'flag'])):
     def children(self):
         return [self.left, self.right]
@@ -163,7 +164,7 @@ class Or(namedtuple("Or",["left", "right", "flag"])):
 
 class And(namedtuple("And",["left", "right", 'flag'])):
     def __repr__(self):
-        return "({} & {}, flag:{})".format(self.left, self.right, self.flag)
+        return "({} {}& {})".format(self.left, self.flag, self.right)
     def children(self):
         return [self.left,self.right]
 

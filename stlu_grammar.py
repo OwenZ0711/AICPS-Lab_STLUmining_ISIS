@@ -142,7 +142,7 @@ class Eventually(namedtuple("E", ['interval','subformula', 'flag'])):
     def children(self):
         return [self.subformula]
     def __repr__(self):
-        return "{}F{}({})".format(self.flag, self.interval, self.subformula)
+        return "{}F{}{}".format(self.flag, self.interval, self.subformula)
     
 class Until(namedtuple('U',['interval','left', 'right' , 'flag'])):
     def children(self):
